@@ -81,13 +81,12 @@ class Weapon(Entity):
 
 class Engine():
 
-    def __init__(self, rounds):
-        self.rounds = rounds
+    def __init__(self):
         self.size = 10        
         self.map = []
         self.structures = []
-        self.enemies = []
         self.heroes = []
+        self.enemies = []
         self.weapons = []
         self.start_map()
         
@@ -165,10 +164,10 @@ class Engine():
         (x, y) = self.find_empty_space(1, 1)        
         
         # Cria um herói
-        self.heroes.append(Hero(name, x, y, symbol))           
+        self.heroes.append(Hero(name, x, y, symbol))    
         
         # Adiciona ao mapa
-        self.add_entity_map(self.heroes[len(self.heroes) - 1])      
+        self.add_entity_map(self.heroes[len(self.heroes) - 1])   
         
     def add_weapon(self, name, symbol):
         
@@ -276,25 +275,46 @@ class Engine():
                     direction = direction.replace('N','')
     
         return(direction)
+
+    def check_path(self, x, y, direction):
+
+        blocked = False
+        pos_x = x
+        pos_y = y
+
+        if direction.__contains__('N'):
+            pos_y -= 1      
+        if direction.__contains__('S'):
+            pos_y += 1
+        if direction.__contains__('E'):
+            pos_x += 1
+        if direction.__contains__('W'):
+            pos_x -= 1
+
+        for structure in self.structures:
+
+            if y == structure.y or x == structure.x:
+                blocked = True 
+
+        return( blocked )
+
+    def move_heroes(self, direction):
+
+        for hero in self.heroes:
+            blocked = self.check_path(hero.x[0], hero.y[0], direction)
+            if blocked:
+                self.event("Path blocked")
+            else:
+                hero.move(direction)
         
-    def move_entities(self):
+    def move_enemies(self):
         
         for enemy in self.enemies:
             (x, y) = enemy.find(self.heroes)
             direction = self.path(enemy, x, y)
             if direction != '':
                 enemy.move(direction)
-
-        for hero in self.heroes:
-            if hero.armed == True:
-                (x, y) = hero.find(self.enemies)
-            else:
-                (x, y) = hero.find(self.weapons)   
-             
-            direction = self.path(hero, x, y)
-            if direction != '':
-                hero.move(direction)
-                
+               
     def update_map(self):
         
         self.map = []
@@ -328,24 +348,3 @@ class Engine():
             print('')            
             
         print('------------------------------')
-        time.sleep(1)     
-                
-    def run(self):
-       
-        self.event('Game Started')
-        
-        self.screen()        
-        
-        for x in range(self.rounds):
-            
-            self.move_entities()
-            
-            self.check_collisions()
-            
-            self.update_map()
-
-            self.screen()                        
-
-            self.check_victory()
-
-        self.event('Game Ended')
