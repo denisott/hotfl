@@ -1,4 +1,7 @@
 # HOTFL
+
+Hero Of The Forgotten Land
+
 Simple game for python basic skills training
 
 ## Commands
@@ -12,3 +15,12 @@ Simple game for python basic skills training
 - ne : moves the hero NorthWet
 - quit : quits the game
 - help : show all commands
+
+## Skills
+- if
+- for
+- while
+- lists
+- classes
+- inheritance
+- modules
