@@ -1,29 +1,41 @@
 import random
-import time
 import sys 
 
 class Entity():
+    """Class that describes a Entity in the map."""
     
     def __init__(self, name, x, y, width, height, symbol):
+        """
+        Creates a new Entity, with name, symbol for the map
+        Entity size and starting position
+        """
         self.name = name
         self.symbol = symbol
         self.x = []
         self.y = []         
         
-        for pos in range(x, x + width):
-            self.x.append(pos)
+        for position in range(x, x + width):
+            self.x.append(position)
             
-        for pos in range(y, y + height):
-            self.y.append(pos)
+        for position in range(y, y + height):
+            self.y.append(position)
             
 class Creature(Entity):
+    """Class for living creatures."""  
 
     def __init__(self, name, x, y, symbol):
+        """
+        Creates a creture, with alive as default.
+        All creatures occupy only on position in the map.
+        """
         super(Creature, self).__init__(name, x, y, 1, 1, symbol)
         self.alive = True
         
     def move(self, direction):
-        
+        """
+        Moves the creature in desired direction.
+        Diagonal movement is accepted.
+        """
         if direction.__contains__('N'):
             self.y[0] -= 1      
         if direction.__contains__('S'):
@@ -68,50 +80,102 @@ class Creature(Entity):
         return(obj_x, obj_y)
         
 class Hero(Creature):
+    """Class that describes a hero."""
 
     def __init__(self, name, x, y, symbol):
+        """Creates a new hero, that can wield weapons."""
         super(Hero, self).__init__(name, x, y, symbol)
         self.armed = False
         
 class Weapon(Entity):
+    """Class for weapons, used by heroes."""
     
     def __init__(self, name, x, y, symbol):
+        """Creates a new weapons, with a found attribute."""
         super(Weapon, self).__init__(name, x, y, 1, 1, symbol)
         self.found = False
 
-class Engine():
+class Game():
+    """Class that has all the logic to run the game."""
+    valid_commands = ('QUIT', 'HELP', 'N', 'S', 'E', 'W', 'NE', 'NW', 'SE', 'SW')
 
-    def __init__(self):
-        self.size = 10        
+    def __init__(self, size):
+        """Creates a new game instance."""
+        self.size = size       
         self.map = []
         self.structures = []
         self.heroes = []
         self.enemies = []
         self.weapons = []
-        self.start_map()
+        self.initialize_map()
         
-    def start_map(self):
-        
-        # Inicializa o mapa do jogo
+    def initialize_map(self):
+        """Initializes all map positions."""
         for y in range(self.size):
             line = []
             for x in range(self.size):
               line.append(' ')
             self.map.append(line)
-            
-    def find_empty_space(self, width, height):
+
+    def start_game(self):
+        """Starts the game."""
+        self.event('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        self.event('     Hero of the Forgotten Land       ')
+        self.event('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        self.event('  Find weapons and kill all enemies!  ')
+        self.event('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        self.game_loop()
+
+    def game_loop(self):
+        """Game loop."""
+        self.screen()
+        user_command = self.get_command()
+
+        if user_command == 'QUIT':
+            self.end_game()
+            return
+
+        self.move_heroes(user_command)
+        self.move_enemies()
+        self.check_collisions()   
+        self.update_map()
+        if self.check_victory():
+            self.screen()
+            self.end_game()
+            return
+
+        self.game_loop()     
+
+    def end_game(self):
+        """Ends the game."""
+        self.event('Thank you for playing!')
+
+    def get_command(self):
+        """Gets the user command."""
+        user_command = input("Wich direction do you want to move?\n").upper()
         
+        if user_command not in self.valid_commands:
+            self.event('Invalid Command')
+            self.get_command()
+        else:
+            return user_command
+            
+    def find_starting_position(self, width=1, height=1):
+        """
+        Finds a starting position for the Entity in the map.
+        The surrounding area must comport the Entity size.
+        """
         found = False
         
         while found == False:
             
             found = True
             
-            # Gera uma posição aleatório, respeitando o tamanho da entidade.
+            # Generate random position that could fit the entity, remove map border.
             x = random.randint(0, self.size - width)
             y = random.randint(0, self.size - height)
             
-            # Valida espaços vazios.
+            # Check if space is empty, respecting entity size.
             for pos_y in range(y, y + height):
                 for pos_x in range(x, x + width):
                     if self.map[pos_y][pos_x] != ' ':
@@ -122,66 +186,47 @@ class Engine():
                 
         return(x, y)        
             
-    def add_entity_map(self, entity):
-        
-        # Adiciona a entidade ao mapa
-        for y in entity.y:
-            for x in entity.x:
-                self.map[y][x] = entity.symbol
+    def add_entity_to_map(self, entity):
+        """Puts the Entity symbol in the map."""
+        for pos_y in entity.y:
+            for pos_x in entity.x:
+                self.map[pos_y][pos_x] = entity.symbol
                 
-    def remove_entity_map(self, entity):
-        
-        # Remove a entidade do mapa
-        for y in entity.y:
-            for x in entity.x:
-                self.map[y][x] = ' '  
+    def remove_entity_from_map(self, entity):
+        """Removes entity symbol from the map."""
+        for pos_y in entity.y:
+            for pos_x in entity.x:
+                self.map[pos_y][pos_x] = ' '  
                 
-    def add_structure(self, name, width, height, symbol):
-        
-        # Procura por uma posição inicial vazia
-        (x, y) = self.find_empty_space(width, height)
-        
-        # Cria a estrutura
+    def create_structure(self, name, width, height, symbol):
+        """Creates a new structure in the map."""
+        (x, y) = self.find_starting_position(width, height)        
         self.structures.append(Entity(name, x, y, width, height, symbol))   
+        self.add_entity_to_map(self.structures[-1])
         
-        # Adiciona ao mapa
-        self.add_entity_map(self.structures[len(self.structures) - 1])
-        
-    def add_enemy(self, name, symbol):
-        
-        # Procura por uma posição inicial vazia
-        (x, y) = self.find_empty_space(1, 1)        
-        
-        # Cria um enemigo
+    def create_enemy(self, name, symbol):
+        """Creates a new Enemy."""
+        (x, y) = self.find_starting_position()        
         self.enemies.append(Creature(name, x, y, symbol))           
+        self.add_entity_to_map(self.enemies[-1])        
         
-        # Adiciona ao mapa
-        self.add_entity_map(self.enemies[len(self.enemies) - 1])        
-        
-    def add_hero(self, name, symbol):
-        
-        # Procura por uma posição inicial vazia
-        (x, y) = self.find_empty_space(1, 1)        
-        
-        # Cria um herói
+    def create_hero(self, name, symbol):
+        """Creates a new Hero."""
+        (x, y) = self.find_starting_position()        
         self.heroes.append(Hero(name, x, y, symbol))    
+        self.add_entity_to_map(self.heroes[-1])   
         
-        # Adiciona ao mapa
-        self.add_entity_map(self.heroes[len(self.heroes) - 1])   
-        
-    def add_weapon(self, name, symbol):
-        
-        # Procura por uma posição inicial vazia
-        (x, y) = self.find_empty_space(1, 1)        
-        
-        # Cria uma arma
+    def create_weapon(self, name, symbol):
+        """Creates a new Wepon."""
+        (x, y) = self.find_starting_position()        
         self.weapons.append(Weapon(name, x, y, symbol))           
-        
-        # Adiciona ao mapa
-        self.add_entity_map(self.weapons[len(self.weapons) - 1])
+        self.add_entity_to_map(self.weapons[-1])
         
     def check_collisions(self):
-        
+        """
+        Checks if 2 or more entities are in the same position.
+        Heroes move first, and can pick up weapons before enemies reach.
+        """
         for hero in self.heroes:
             
             if hero.alive == True:
@@ -202,7 +247,7 @@ class Engine():
                             self.event(enemy.name + ' killed ' + hero.name)           
                             
     def check_victory(self):
-        
+        """Checks if all enemies or the hero is dead."""
         enemies_alive = False
         heroes_alive = False
         
@@ -215,15 +260,12 @@ class Engine():
                 heroes_alive = True
                 
         if enemies_alive == True and heroes_alive == False:
-            self.event('Enemies killed all heroes')
-            self.end_game()
+            self.event('Enemies killed all heroes!')
+            return True
             
         if heroes_alive == True and enemies_alive == False:
-            self.event('Heroes vanquised all enemies')
-            self.end_game()          
-
-    def end_game(self):
-        sys.exit()
+            self.event('Heroes vanquised all enemies!')
+            return True          
         
     def path(self, entity, x, y):
         
@@ -277,7 +319,7 @@ class Engine():
         return(direction)
 
     def check_path(self, x, y, direction):
-
+        """Check if direction of movement is not blocked by a structure."""
         blocked = False
         pos_x = x
         pos_y = y
@@ -296,10 +338,10 @@ class Engine():
             if y == structure.y or x == structure.x:
                 blocked = True 
 
-        return( blocked )
+        return blocked
 
     def move_heroes(self, direction):
-
+        """Moves the hero in desired direction, checking if path is blocked."""
         for hero in self.heroes:
             blocked = self.check_path(hero.x[0], hero.y[0], direction)
             if blocked:
@@ -308,7 +350,7 @@ class Engine():
                 hero.move(direction)
         
     def move_enemies(self):
-        
+        """Moves the enemies in the hero direction."""
         for enemy in self.enemies:
             (x, y) = enemy.find(self.heroes)
             direction = self.path(enemy, x, y)
@@ -316,35 +358,32 @@ class Engine():
                 enemy.move(direction)
                
     def update_map(self):
-        
+        """Update maps after movements and collisions check."""
         self.map = []
-        
-        self.start_map()
+        self.initialize_map()
         
         for structure in self.structures:
-            self.add_entity_map(structure)
+            self.add_entity_to_map(structure)
             
         for weapon in self.weapons:
             if weapon.found == False:
-                self.add_entity_map(weapon)     
+                self.add_entity_to_map(weapon)     
         
         for hero in self.heroes:
             if hero.alive == True:
-                self.add_entity_map(hero)
+                self.add_entity_to_map(hero)
                 
         for enemy in self.enemies:
             if enemy.alive == True:
-                self.add_entity_map(enemy)
+                self.add_entity_to_map(enemy)
         
     def event(self, text):
+        """Print the game event."""
         print(text)        
                     
     def screen(self):
-        print('------------------------------')
-        
+        """Displays the game screen."""
         for y in range(self.size):
             for x in range(self.size):
                 print('[%s]' % self.map[y][x], end='')
             print('')            
-            
-        print('------------------------------')
