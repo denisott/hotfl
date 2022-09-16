@@ -1,106 +1,6 @@
 import random
-import sys
-
-
-class Entity:
-    """Class that describes a Entity in the map."""
-
-    def __init__(self, name, x, y, width, height, symbol):
-        """
-        Creates a new Entity, with name, symbol for the map
-        Entity size and starting position
-        """
-        self.name = name
-        self.symbol = symbol
-        self.x = []
-        self.y = []
-
-        for position in range(x, x + width):
-            self.x.append(position)
-
-        for position in range(y, y + height):
-            self.y.append(position)
-
-
-class Creature(Entity):
-    """Class for living creatures."""
-
-    def __init__(self, name, x, y, symbol):
-        """
-        Creates a creture, with alive as default.
-        All creatures occupy only on position in the map.
-        """
-        super(Creature, self).__init__(name, x, y, 1, 1, symbol)
-        self.alive = True
-
-    def move(self, direction):
-        """
-        Moves the creature in desired direction.
-        Diagonal movement is accepted.
-        """
-        if direction.__contains__('N'):
-            self.y[0] -= 1
-        if direction.__contains__('S'):
-            self.y[0] += 1
-        if direction.__contains__('E'):
-            self.x[0] += 1
-        if direction.__contains__('W'):
-            self.x[0] -= 1
-
-    def find(self, objectives):
-
-        max_distance = 999
-
-        # Define qual a entidade mais próxima
-        for objective in objectives:
-
-            dist_x = 0
-            dist_y = 0
-
-            if (
-                isinstance(objective, Creature) and objective.alive == True
-            ) or (isinstance(objective, Weapon) and objective.found == False):
-
-                dist_x = abs(objective.x[0] - self.x[0])
-                dist_y = abs(objective.y[0] - self.y[0])
-
-                # Define a distância diagonal
-                if dist_x > dist_y:
-                    diag = dist_y
-                elif dist_y > dist_x:
-                    diag = dist_x
-                else:
-                    diag = 0
-
-                # calcula a distancia
-                distance = dist_x + dist_y - diag
-
-                if distance < max_distance:
-                    max_distance = distance
-                    obj_x = objective.x[0]
-                    obj_y = objective.y[0]
-
-        # Retorna a posição do objetivo
-        return (obj_x, obj_y)
-
-
-class Hero(Creature):
-    """Class that describes a hero."""
-
-    def __init__(self, name, x, y, symbol):
-        """Creates a new hero, that can wield weapons."""
-        super(Hero, self).__init__(name, x, y, symbol)
-        self.armed = False
-
-
-class Weapon(Entity):
-    """Class for weapons, used by heroes."""
-
-    def __init__(self, name, x, y, symbol):
-        """Creates a new weapons, with a found attribute."""
-        super(Weapon, self).__init__(name, x, y, 1, 1, symbol)
-        self.found = False
-
+from entity import Entity, Creature, Hero, Weapon
+from map import Map
 
 class Game:
     """Class that has all the logic to run the game."""
@@ -121,20 +21,11 @@ class Game:
     def __init__(self, size):
         """Creates a new game instance."""
         self.size = size
-        self.map = []
         self.structures = []
         self.heroes = []
         self.enemies = []
         self.weapons = []
-        self.initialize_map()
-
-    def initialize_map(self):
-        """Initializes all map positions."""
-        for y in range(self.size):
-            line = []
-            for x in range(self.size):
-                line.append(' ')
-            self.map.append(line)
+        self.map = Map(size)
 
     def start_game(self):
         """Starts the game."""
@@ -191,13 +82,13 @@ class Game:
             found = True
 
             # Generate random position that could fit the entity, remove map border.
-            x = random.randint(0, self.size - width)
-            y = random.randint(0, self.size - height)
+            x = random.randint(0, self.map.size - width)
+            y = random.randint(0, self.map.size - height)
 
             # Check if space is empty, respecting entity size.
             for pos_y in range(y, y + height):
                 for pos_x in range(x, x + width):
-                    if self.map[pos_y][pos_x] != ' ':
+                    if self.map.map[pos_y][pos_x] != ' ':
                         found = False
                         break
                 if found == False:
@@ -205,41 +96,29 @@ class Game:
 
         return (x, y)
 
-    def add_entity_to_map(self, entity):
-        """Puts the Entity symbol in the map."""
-        for pos_y in entity.y:
-            for pos_x in entity.x:
-                self.map[pos_y][pos_x] = entity.symbol
-
-    def remove_entity_from_map(self, entity):
-        """Removes entity symbol from the map."""
-        for pos_y in entity.y:
-            for pos_x in entity.x:
-                self.map[pos_y][pos_x] = ' '
-
     def create_structure(self, name, width, height, symbol):
         """Creates a new structure in the map."""
         (x, y) = self.find_starting_position(width, height)
         self.structures.append(Entity(name, x, y, width, height, symbol))
-        self.add_entity_to_map(self.structures[-1])
+        self.map.add_entity(self.structures[-1])
 
     def create_enemy(self, name, symbol):
         """Creates a new Enemy."""
         (x, y) = self.find_starting_position()
         self.enemies.append(Creature(name, x, y, symbol))
-        self.add_entity_to_map(self.enemies[-1])
+        self.map.add_entity(self.enemies[-1])
 
     def create_hero(self, name, symbol):
         """Creates a new Hero."""
         (x, y) = self.find_starting_position()
         self.heroes.append(Hero(name, x, y, symbol))
-        self.add_entity_to_map(self.heroes[-1])
+        self.map.add_entity(self.heroes[-1])
 
     def create_weapon(self, name, symbol):
         """Creates a new Wepon."""
         (x, y) = self.find_starting_position()
         self.weapons.append(Weapon(name, x, y, symbol))
-        self.add_entity_to_map(self.weapons[-1])
+        self.map.add_entity(self.weapons[-1])
 
     def check_collisions(self):
         """
@@ -295,8 +174,7 @@ class Game:
             return True
 
     def path(self, entity, x, y):
-
-        # Define a direção do movimento para o mais próximo
+        """Checks which direction to move."""
         dist_y = y - entity.y[0]
         dist_x = x - entity.x[0]
 
@@ -386,23 +264,22 @@ class Game:
 
     def update_map(self):
         """Update maps after movements and collisions check."""
-        self.map = []
-        self.initialize_map()
+        self.map.initialize()
 
         for structure in self.structures:
-            self.add_entity_to_map(structure)
+            self.map.add_entity(structure)
 
         for weapon in self.weapons:
             if weapon.found == False:
-                self.add_entity_to_map(weapon)
+                self.map.add_entity(weapon)
 
         for hero in self.heroes:
             if hero.alive == True:
-                self.add_entity_to_map(hero)
+                self.map.add_entity(hero)
 
         for enemy in self.enemies:
             if enemy.alive == True:
-                self.add_entity_to_map(enemy)
+                self.map.add_entity(enemy)
 
     def event(self, text):
         """Print the game event."""
@@ -410,7 +287,7 @@ class Game:
 
     def screen(self):
         """Displays the game screen."""
-        for y in range(self.size):
-            for x in range(self.size):
-                print('[%s]' % self.map[y][x], end='')
+        for y in range(self.map.size):
+            for x in range(self.map.size):
+                print('[%s]' % self.map.map[y][x], end='')
             print('')
