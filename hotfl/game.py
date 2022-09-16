@@ -1,6 +1,6 @@
-import random
 from entity import Entity, Creature, Hero, Weapon
 from map import Map
+
 
 class Game:
     """Class that has all the logic to run the game."""
@@ -70,53 +70,27 @@ class Game:
         else:
             return user_command
 
-    def find_starting_position(self, width=1, height=1):
-        """
-        Finds a starting position for the Entity in the map.
-        The surrounding area must comport the Entity size.
-        """
-        found = False
-
-        while found == False:
-
-            found = True
-
-            # Generate random position that could fit the entity, remove map border.
-            x = random.randint(0, self.map.size - width)
-            y = random.randint(0, self.map.size - height)
-
-            # Check if space is empty, respecting entity size.
-            for pos_y in range(y, y + height):
-                for pos_x in range(x, x + width):
-                    if self.map.map[pos_y][pos_x] != ' ':
-                        found = False
-                        break
-                if found == False:
-                    break
-
-        return (x, y)
-
     def create_structure(self, name, width, height, symbol):
         """Creates a new structure in the map."""
-        (x, y) = self.find_starting_position(width, height)
+        (x, y) = self.map.find_starting_position(width, height)
         self.structures.append(Entity(name, x, y, width, height, symbol))
         self.map.add_entity(self.structures[-1])
 
     def create_enemy(self, name, symbol):
         """Creates a new Enemy."""
-        (x, y) = self.find_starting_position()
+        (x, y) = self.map.find_starting_position()
         self.enemies.append(Creature(name, x, y, symbol))
         self.map.add_entity(self.enemies[-1])
 
     def create_hero(self, name, symbol):
         """Creates a new Hero."""
-        (x, y) = self.find_starting_position()
+        (x, y) = self.map.find_starting_position()
         self.heroes.append(Hero(name, x, y, symbol))
         self.map.add_entity(self.heroes[-1])
 
     def create_weapon(self, name, symbol):
         """Creates a new Wepon."""
-        (x, y) = self.find_starting_position()
+        (x, y) = self.map.find_starting_position()
         self.weapons.append(Weapon(name, x, y, symbol))
         self.map.add_entity(self.weapons[-1])
 
